@@ -1,0 +1,12 @@
+# Newspaper content stays local: e-paper PDFs and the readers generated from them
+*.pdf
+*.html
+!index.html
+!reader_template.html
+
+# personal notes and tool settings
+CLAUDE.md
+.claude/
+
+__pycache__/
+.DS_Store

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zeitung in großer Schrift</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+  /* same colours as reader_template.html; the theme chosen while reading is reused here */
+  :root { --bg: #fffdf5; --fg: #000; --accent: #003c8f; --card: #fff; --line: #000; --error: #a00000; }
+  :root[data-theme="dark"]   { --bg: #000; --fg: #fff;    --accent: #9fd0ff; --card: #111; --line: #fff;    --error: #ff8a80; }
+  :root[data-theme="yellow"] { --bg: #000; --fg: #ffeb3b; --accent: #fff;    --card: #000; --line: #ffeb3b; --error: #ff8a80; }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--bg); color: var(--fg);
+    font: 32px/1.5 "Atkinson Hyperlegible", Verdana, Arial, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+  }
+  main { max-width: 26em; padding: 1em; text-align: center; }
+  h1 { font-size: 1.5em; line-height: 1.2; margin: 0 0 1em; }
+  button {
+    font: inherit; font-size: 1.3em; font-weight: 700; color: var(--fg); background: var(--card);
+    border: 6px solid var(--line); border-radius: 20px; padding: 0.5em 1.2em; cursor: pointer;
+  }
+  button:focus-visible { outline: 8px solid var(--accent); outline-offset: 6px; }
+  button:disabled { opacity: 0.5; cursor: wait; }
+  p { margin: 1em 0 0; }
+  .hint { font-size: 0.8em; }
+  #status { font-weight: 700; min-height: 3em; }
+  #status.error { color: var(--error); }
+  body.dragging main { outline: 8px dashed var(--accent); outline-offset: 0.5em; border-radius: 20px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Zeitung in großer Schrift</h1>
+  <button id="open">Zeitung öffnen</button>
+  <input id="file" type="file" accept="application/pdf,.pdf" hidden>
+  <p id="status" role="status" aria-live="polite">Wird geladen …</p>
+  <p class="hint">Bitte die heruntergeladene PDF-Datei der Süddeutschen Zeitung auswählen –
+    oder die Datei einfach in dieses Fenster ziehen.</p>
+  <p class="hint">Die Zeitung bleibt auf diesem Computer. Es wird nichts hochgeladen.</p>
+</main>
+<!-- module scope: the reader page written over this one declares its own globals -->
+<script type="module" src="app.js"></script>
+</body>
+</html>

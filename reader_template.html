@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}}</title>
+<!-- Atkinson Hyperlegible: designed by the Braille Institute for low-vision readers. Falls back to Verdana offline. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+  :root {
+    --size: 32px;
+    --bg: #fffdf5; --fg: #000; --muted: #333; --accent: #003c8f; --card: #fff; --line: #000;
+  }
+  :root[data-theme="dark"]   { --bg: #000; --fg: #fff;    --muted: #ddd;    --accent: #9fd0ff; --card: #111; --line: #fff; }
+  :root[data-theme="yellow"] { --bg: #000; --fg: #ffeb3b; --muted: #ffeb3b; --accent: #fff;    --card: #000; --line: #ffeb3b; }
+
+  * { box-sizing: border-box; }
+  html { font-size: var(--size); }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: "Atkinson Hyperlegible", Verdana, Arial, sans-serif;
+    line-height: 1.5; letter-spacing: 0.02em; word-spacing: 0.08em;
+  }
+  main { max-width: 30em; margin: 0 auto; padding: 0.6em 0.6em 3em; }
+
+  /* toolbar: always visible, fixed button size independent of text zoom */
+  .bar {
+    position: sticky; top: 0; z-index: 1; display: flex; gap: 12px; flex-wrap: wrap;
+    padding: 12px; background: var(--bg); border-bottom: 4px solid var(--line);
+    font-size: 28px;
+  }
+  button, .btn {
+    font: inherit; font-weight: 700; color: var(--fg); background: var(--card);
+    border: 4px solid var(--line); border-radius: 14px; padding: 0.3em 0.7em;
+    min-height: 2.2em; cursor: pointer; text-decoration: none;
+  }
+  button:focus-visible, .btn:focus-visible, .item:focus-visible { outline: 6px solid var(--accent); outline-offset: 4px; }
+  .bar .spacer { flex: 1; }
+  .bar .zoom { min-width: 2.6em; }
+
+  h1 { font-size: 1.5em; line-height: 1.2; margin: 0.5em 0 0.4em; }
+  h2 { font-size: 1.15em; line-height: 1.3; margin: 1.4em 0 0.4em; }
+  p { margin: 0 0 1em; }
+  .meta { color: var(--muted); font-size: 0.8em; font-weight: 700; margin-top: 1em; }
+  .subtitle { font-size: 1.05em; font-weight: 700; color: var(--muted); }
+  .q { font-weight: 700; }
+
+  /* overview */
+  .list { list-style: none; padding: 0; margin: 0; }
+  .item {
+    display: block; width: 100%; text-align: left; margin: 0 0 0.6em;
+    padding: 0.5em 0.6em; border: 4px solid var(--line); border-radius: 16px;
+    background: var(--card); color: var(--fg); font-weight: 400;
+  }
+  .item .meta { margin: 0 0 0.2em; }
+  .item .head { font-weight: 700; font-size: 1.05em; line-height: 1.25; display: block; }
+  .section-title { font-size: 0.9em; margin: 1.5em 0 0.4em; padding-bottom: 0.1em; border-bottom: 3px solid var(--line); }
+
+  .nav { display: flex; flex-direction: column; gap: 0.5em; margin-top: 2em; font-size: 0.9em; }
+  .nav button { width: 100%; }
+  .count { color: var(--muted); font-weight: 700; font-size: 0.8em; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="bar" role="toolbar" aria-label="Einstellungen">
+  <button id="home" hidden>☰ Übersicht</button>
+  <span class="spacer"></span>
+  <button class="zoom" id="smaller" aria-label="Schrift kleiner">A−</button>
+  <button class="zoom" id="bigger" aria-label="Schrift größer">A+</button>
+  <button id="theme" aria-label="Farben wechseln">◐ Farben</button>
+</div>
+<main id="view" tabindex="-1"></main>
+
+<script id="edition" type="application/json">{{DATA}}</script>
+<script>
+const edition = JSON.parse(document.getElementById("edition").textContent);
+const articles = edition.articles;
+const SIZES = [24, 28, 32, 40, 48, 56, 64, 80, 96, 120];
+const THEMES = ["light", "dark", "yellow"];
+const view = document.getElementById("view");
+const homeBtn = document.getElementById("home");
+
+const store = {
+  get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+let sizeIdx = Math.min(SIZES.length - 1, Math.max(0, +store.get("zr-size", 2)));
+let theme = store.get("zr-theme", "light");
+let lastArticle = -1;
+
+function applySettings() {
+  document.documentElement.style.setProperty("--size", SIZES[sizeIdx] + "px");
+  document.documentElement.dataset.theme = theme;
+  store.set("zr-size", sizeIdx);
+  store.set("zr-theme", theme);
+}
+
+function el(tag, attrs = {}, text) {
+  const e = document.createElement(tag);
+  Object.assign(e, attrs);
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+function pageLabel(a) {
+  return "Seite " + a.page + (a.section ? " · " + a.section : "");
+}
+
+function showOverview() {
+  homeBtn.hidden = true;
+  view.replaceChildren();
+  view.append(el("h1", {}, edition.title + " vom " + edition.date));
+  view.append(el("p", { className: "count" }, articles.length + " Artikel. Zum Lesen bitte antippen."));
+  let section = null, list;
+  articles.forEach((a, i) => {
+    const sec = pageLabel(a);
+    if (sec !== section) {
+      section = sec;
+      view.append(el("h2", { className: "section-title" }, sec));
+      list = el("ul", { className: "list" });
+      view.append(list);
+    }
+    const btn = el("button", { className: "item", id: "item" + i });
+    btn.append(el("span", { className: "head" }, a.headline));
+    btn.onclick = () => { location.hash = "a" + i; };
+    const li = el("li"); li.append(btn); list.append(li);
+  });
+  const back = document.getElementById("item" + lastArticle);
+  if (back) { back.scrollIntoView({ block: "center" }); back.focus({ preventScroll: true }); }
+  else window.scrollTo(0, 0);
+  document.title = edition.title + " – " + edition.date;
+}
+
+function showArticle(i) {
+  const a = articles[i];
+  lastArticle = i;
+  homeBtn.hidden = false;
+  view.replaceChildren();
+  const art = el("article");
+  art.append(el("div", { className: "meta" }, pageLabel(a) + " · Artikel " + (i + 1) + " von " + articles.length));
+  art.append(el("h1", {}, a.headline));
+  if (a.subtitle) art.append(el("p", { className: "subtitle" }, a.subtitle));
+  if (a.author) art.append(el("p", { className: "meta" }, "Von " + a.author));
+  for (const p of a.paragraphs) {
+    if (p.type === "h") art.append(el("h2", {}, p.text));
+    else art.append(el("p", p.type === "q" ? { className: "q" } : {}, p.text));
+  }
+  view.append(art);
+
+  const nav = el("div", { className: "nav" });
+  if (i + 1 < articles.length) nav.append(navButton("Nächster Artikel ▶", i + 1));
+  if (i > 0) nav.append(navButton("◀ Vorheriger Artikel", i - 1));
+  const home = el("button", {}, "☰ Zur Übersicht");
+  home.onclick = () => { location.hash = ""; };
+  nav.append(home);
+  view.append(nav);
+
+  window.scrollTo(0, 0);
+  view.focus({ preventScroll: true });
+  document.title = a.headline;
+}
+
+function navButton(label, target) {
+  const b = el("button", {}, label);
+  b.onclick = () => { location.hash = "a" + target; };
+  return b;
+}
+
+function route() {
+  const m = location.hash.match(/^#a(\d+)$/);
+  if (m && articles[+m[1]]) showArticle(+m[1]); else showOverview();
+}
+
+document.getElementById("bigger").onclick = () => { sizeIdx = Math.min(SIZES.length - 1, sizeIdx + 1); applySettings(); };
+document.getElementById("smaller").onclick = () => { sizeIdx = Math.max(0, sizeIdx - 1); applySettings(); };
+document.getElementById("theme").onclick = () => { theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length]; applySettings(); };
+homeBtn.onclick = () => { location.hash = ""; };
+
+document.addEventListener("keydown", e => {
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
+  const m = location.hash.match(/^#a(\d+)$/);
+  if (e.key === "+") document.getElementById("bigger").click();
+  else if (e.key === "-") document.getElementById("smaller").click();
+  else if (e.key === "Escape") location.hash = "";
+  else if (m && e.key === "ArrowRight" && articles[+m[1] + 1]) location.hash = "a" + (+m[1] + 1);
+  else if (m && e.key === "ArrowLeft" && +m[1] > 0) location.hash = "a" + (+m[1] - 1);
+});
+
+window.addEventListener("hashchange", route);
+applySettings();
+route();
+</script>
+</body>
+</html>
